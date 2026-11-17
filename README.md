@@ -94,7 +94,6 @@ Any current desktop or mobile browser with WebGL. Audio starts only after a clic
 ## Known issues
 
 - **The export snippet is an approximation.** It is a CSS-only orb with a pulse animation that reflects the selected colour and pulse frequency. It does not reproduce the rings, particles, archetype, or any physics settings.
-- **Void Singularity's dark core leaks.** Selecting Void Singularity and then another archetype leaves the core dark until you pick a colour theme. Picking a colour theme while on Void Singularity recolours its core.
 - **Two dependencies are unpinned.** Lucide loads `@latest` and Tailwind loads the Play CDN build, so an upstream release can change or break the page. The Play CDN is also not intended for production use.
 - **Copy uses `document.execCommand('copy')`,** which is deprecated.
 

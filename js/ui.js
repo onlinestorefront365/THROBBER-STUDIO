@@ -1,13 +1,19 @@
 lucide.createIcons();
 
 // Apply Visual Theme & Preset
+const SINGULARITY_CORE_COLOR = 0x05050a;
+
+function applyCoreColor() {
+  plasmaMat.color.setHex(config.preset === 'singularity' ? SINGULARITY_CORE_COLOR : getActiveColors().core);
+}
+
 function applyThemeColors() {
   const c = getActiveColors();
   document.getElementById('bg-aura').style.backgroundColor = c.hex;
 
   corePointLight.color.setHex(c.glow);
   fresnelMat.color.setHex(c.ring);
-  plasmaMat.color.setHex(c.core);
+  applyCoreColor();
   plasmaMat.emissive.setHex(c.glow);
   prismMat.emissive.setHex(c.glow);
   coreAuraMat.color.setHex(c.glow);
@@ -49,10 +55,11 @@ function applyPreset(presetName) {
     config.glassOpacity = 0.35;
   } else if (presetName === 'singularity') {
     plasmaCore.visible = true;
-    plasmaMat.color.setHex(0x05050a);
     config.showOrb = true;
     config.glassOpacity = 0.55;
   }
+
+  applyCoreColor();
 
   document.getElementById('toggle-orb').checked = config.showOrb;
   document.getElementById('input-opacity').value = config.glassOpacity;
