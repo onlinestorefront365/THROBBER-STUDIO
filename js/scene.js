@@ -126,3 +126,14 @@ const floorShadow = new THREE.Mesh(shadowGeo, shadowMat);
 floorShadow.rotation.x = -Math.PI / 2;
 floorShadow.position.y = -1.65;
 scene.add(floorShadow);
+
+// Responsive Resize
+function handleResize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  if (w === 0 || h === 0) return;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', handleResize);
