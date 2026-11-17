@@ -2,7 +2,7 @@
 
 ## Setup
 
-There is nothing to install or build.
+There is nothing to install or build yet.
 
 ```bash
 git clone https://github.com/onlinestorefront365/throbber-studio.git
@@ -14,7 +14,7 @@ Open <http://localhost:8000> and reload after each edit.
 
 ## Ground rules
 
-- **No build step.** The project must keep working by opening `index.html` directly. Do not add a bundler, a transpiler, a framework, or npm dependencies without opening an issue to discuss it first.
+- **No build step.** The project must keep working by opening `index.html` directly. Do not add a bundler, a transpiler, a framework, or npm dependenci⁰es without opening an issue to discuss it first.
 - **Classic scripts, shared global scope.** Files in `js/` are not ES modules. Do not add `import` or `export`.
 - **One change per pull request.** Keep bug fixes, features, and refactors separate.
 
