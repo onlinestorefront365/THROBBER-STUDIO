@@ -34,7 +34,11 @@ window.addEventListener('load', startScene);
 `;
 }
 
+// The single-file build inlines each script and tags it with data-src, so its source is
+// already in the page. Otherwise the file is fetched, which needs the studio on http(s).
 async function fetchText(url) {
+  const inlined = document.querySelector(`[data-src="${url}"]`);
+  if (inlined) return inlined.textContent;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
   return response.text();
@@ -48,7 +52,7 @@ async function downloadStandaloneHtml() {
     html = buildStandaloneHtml({ threeSource, runtimeSources, state: pickState(config) });
   } catch (err) {
     console.warn('Throbber Studio: standalone export failed', err);
-    showToast('Export failed: open the studio from a web server, not from disk');
+    showToast('Export failed: use dist/throbber-studio.html or serve the studio over http');
     return;
   }
 

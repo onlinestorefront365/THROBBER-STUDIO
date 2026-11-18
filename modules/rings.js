@@ -8,4 +8,6 @@ export let ringMeshes = [];
 
 export function stepEulerRK4(omega, I1, I2, I3, dt) {}
 
+export function driftFromSeed(seed) {}
+
 export function rebuildRings() {}

@@ -97,18 +97,17 @@ function refreshRings() {
 
 // Pseudo-Randomize Axis Drift for a single ring or all rings
 function pseudoRandomizeRingDrift(idx, seedVal) {
-  const rng = createMulberry32(seedVal);
-  // Generate pseudo-random drift speed between 0.15 and 1.85 rad/s
-  const newRate = Math.round((0.15 + rng() * 1.70) * 20) / 20;
+  const drift = driftFromSeed(seedVal);
+  const newRate = drift.rate;
   config.ringAxisMigration[idx] = newRate;
   config.ringDriftSeeds[idx] = seedVal;
 
   if (ringMeshes[idx]) {
-    ringMeshes[idx].userData.driftPhaseX = rng() * Math.PI * 2;
-    ringMeshes[idx].userData.driftPhaseY = rng() * Math.PI * 2;
-    ringMeshes[idx].userData.driftPhaseZ = rng() * Math.PI * 2;
-    ringMeshes[idx].userData.driftFreqRatio1 = 0.45 + rng() * 0.75;
-    ringMeshes[idx].userData.driftFreqRatio2 = 0.35 + rng() * 0.85;
+    ringMeshes[idx].userData.driftPhaseX = drift.phaseX;
+    ringMeshes[idx].userData.driftPhaseY = drift.phaseY;
+    ringMeshes[idx].userData.driftPhaseZ = drift.phaseZ;
+    ringMeshes[idx].userData.driftFreqRatio1 = drift.freqRatio1;
+    ringMeshes[idx].userData.driftFreqRatio2 = drift.freqRatio2;
   }
 
   const slider = document.querySelector(`.ring-drift-slider[data-idx="${idx}"]`);

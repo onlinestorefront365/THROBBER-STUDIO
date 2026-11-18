@@ -22,7 +22,8 @@ npm test
 
 ## Ground rules
 
-- **No build step for the app.** The studio must keep working by opening `index.html` directly. Do not add a bundler, a transpiler, a framework, or runtime npm dependencies without opening an issue to discuss it first. `package.json` exists only for test tooling.
+- **Rebuild the single file.** After changing `index.html`, `css/`, or `js/`, run `npm run build` and commit `dist/throbber-studio.html`. A test fails when it is stale.
+- **No build step to run the app.** The studio must keep working by opening `index.html` directly. Do not add a bundler, a transpiler, a framework, or runtime npm dependencies without opening an issue to discuss it first. `package.json` holds test tooling and the single-file build script, which uses only Node's standard library.
 - **Classic scripts, shared global scope.** Files in `js/` are not ES modules. Do not add `import` or `export` to them.
 - **Runtime files never touch the panel.** See [Runtime and studio](#runtime-and-studio).
 - **One change per pull request.** Keep bug fixes, features, and refactors separate.
@@ -42,6 +43,7 @@ npm test
 | The standalone HTML export | `js/export.js` |
 | Toolbar, drag, zoom | `js/viewport.js` |
 | Boot order | `js/main.js` |
+| The single-file build | `scripts/build.js` |
 | Static markup | `index.html` |
 | CSS that Tailwind utilities cannot express | `css/styles.css` |
 
@@ -74,7 +76,7 @@ If you add a runtime file, add it to `RUNTIME_SCRIPTS` in `js/export.js`. The ex
 - All user-adjustable state belongs on the `config` object. Panel handlers write to `config`, `apply.js` pushes it into the scene, and the animation loop reads from it. Do not keep a second copy of a setting elsewhere.
 - Top-level names are global across every script. Give them specific names.
 - Do not allocate inside the per-particle or per-ring-pair loops in `animate()`. Reuse the `tmp*` vectors declared at the top of `loop.js`.
-- Dispose of Three.js geometries and materials when you replace them.
+- Dispose of Three.js geometries, materials, and textures when you replace them.
 - Style with Tailwind utility classes in the markup. Use `css/styles.css` only for what utilities cannot do.
 - Comment the reason for something non-obvious, not what the code does.
 
@@ -114,6 +116,8 @@ If you rename a persisted key, change its type, or change what its values mean, 
 ## Testing
 
 Run `npm test` before opening a pull request. Add or extend a test in `tests/studio.spec.js` for any change to behaviour; a new persisted setting should appear in the reload test.
+
+A new file in `js/` is picked up by the single-file build automatically, because it inlines whatever `index.html` references.
 
 The tests cannot judge how the result looks. Also check by hand, with the browser console open:
 

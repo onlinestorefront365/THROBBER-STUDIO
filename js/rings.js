@@ -20,6 +20,21 @@ function stepEulerRK4(omega, I1, I2, I3, dt) {
        .addScaledVector(k4, dt / 6);
 }
 
+// One seed gives a ring its drift rate and phases, so randomising a ring and later
+// rebuilding it (ring count change, reload, export) land on the same motion.
+function driftFromSeed(seed) {
+  const rng = createMulberry32(seed);
+  return {
+    // 0.15 to 1.85 rad/s in 0.05 steps
+    rate: Math.round((0.15 + rng() * 1.70) * 20) / 20,
+    phaseX: rng() * Math.PI * 2,
+    phaseY: rng() * Math.PI * 2,
+    phaseZ: rng() * Math.PI * 2,
+    freqRatio1: 0.45 + rng() * 0.75,
+    freqRatio2: 0.35 + rng() * 0.85
+  };
+}
+
 function rebuildRings() {
   while (ringsContainer.children.length > 0) {
     ringsContainer.remove(ringsContainer.children[0]);
@@ -58,7 +73,7 @@ function rebuildRings() {
     const baseI = 0.5 * mass * radius * radius;
     const speedSign = Math.sign(config.ringSpeeds[i] ?? 1.0) || 1;
     const initL = Math.abs(config.ringSpeeds[i] ?? 1.0) * config.rotationSpeed * 1.6;
-    const rng = createMulberry32(config.ringDriftSeeds[i] || (i + 1) * 97);
+    const drift = driftFromSeed(config.ringDriftSeeds[i] || (i + 1) * 97);
 
     ring.userData = {
       inertialFrame,
@@ -68,11 +83,11 @@ function rebuildRings() {
       vel: new THREE.Vector3(0, 0, 0),
       omega: new THREE.Vector3(speedSign * (initL / baseI), 0, 0),
       flipTimer: (i * 1.3) % 4.0,
-      driftPhaseX: rng() * Math.PI * 2,
-      driftPhaseY: rng() * Math.PI * 2,
-      driftPhaseZ: rng() * Math.PI * 2,
-      driftFreqRatio1: 0.45 + rng() * 0.75,
-      driftFreqRatio2: 0.35 + rng() * 0.85
+      driftPhaseX: drift.phaseX,
+      driftPhaseY: drift.phaseY,
+      driftPhaseZ: drift.phaseZ,
+      driftFreqRatio1: drift.freqRatio1,
+      driftFreqRatio2: drift.freqRatio2
     };
 
     ring.visible = config.ringEnabled[i] !== false;

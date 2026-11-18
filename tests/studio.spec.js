@@ -1,4 +1,7 @@
+const fs = require('fs');
+const path = require('path');
 const { test, expect } = require('@playwright/test');
+const { render } = require('../scripts/build.js');
 
 const STORAGE_KEY = 'throbber-studio:state';
 
@@ -264,9 +267,7 @@ test('Reset to defaults restores the design and the saved copy', async ({ page }
   await expect.poll(async () => (await readSavedConfig(page))?.ringCount).toBe(3);
 });
 
-test('the standalone export plays the design with no network access', async ({ page, browser }, testInfo) => {
-  await openStudio(page);
-
+async function exportDesignAndPlayOffline(page, browser, testInfo) {
   await page.click('[data-preset="prism"]');
   await page.click('[data-theme="solar"]');
   await page.click('[data-tab="customize"]');
@@ -303,6 +304,61 @@ test('the standalone export plays the design with no network access', async ({ p
   expect(requests).toEqual([]);
   expect(errors).toEqual([]);
   await context.close();
+}
+
+test('the standalone export plays the design with no network access', async ({ page, browser }, testInfo) => {
+  await openStudio(page);
+  await exportDesignAndPlayOffline(page, browser, testInfo);
+});
+
+test.describe('single-file build', () => {
+  const builtFile = path.resolve(__dirname, '../dist/throbber-studio.html');
+
+  test('the committed build matches the source', () => {
+    expect(fs.readFileSync(builtFile, 'utf8'), 'dist/throbber-studio.html is stale: run npm run build').toBe(render());
+  });
+
+  test('works from disk, including the standalone export', async ({ page, browser }, testInfo) => {
+    const errors = trackErrors(page);
+    await page.goto(`file://${builtFile}`);
+    await page.waitForFunction(() => typeof renderer !== 'undefined' && renderer.info.render.frame > 0);
+    expect(await page.evaluate(() => ringMeshes.length)).toBe(3);
+
+    await exportDesignAndPlayOffline(page, browser, testInfo);
+    expect(errors).toEqual([]);
+  });
+});
+
+test('ring drift is the same after a rebuild as after randomising', async ({ page }) => {
+  await openStudio(page);
+  await page.click('[data-tab="customize"]');
+  await page.click('#btn-randomize-drift');
+
+  const drift = () => page.evaluate(() => ringMeshes.slice(0, 3).map(ring => [
+    ring.userData.driftPhaseX, ring.userData.driftPhaseY, ring.userData.driftPhaseZ,
+    ring.userData.driftFreqRatio1, ring.userData.driftFreqRatio2
+  ]));
+  const randomised = await drift();
+
+  await setSlider(page, '#input-ring-count', 4);
+  expect(await drift()).toEqual(randomised);
+  expect(await page.evaluate(() => config.ringAxisMigration.slice(0, 3).every(rate => rate > 0))).toBe(true);
+});
+
+test('the floor shadow follows the colour theme', async ({ page }) => {
+  await openStudio(page);
+  const centre = () => page.evaluate(() => {
+    const [r, g, b] = shadowMat.map.image.getContext('2d').getImageData(64, 64, 1, 1).data;
+    return { r, g, b };
+  });
+
+  const mystic = await centre();
+  expect(mystic.r).toBeGreaterThan(mystic.g);
+
+  await page.click('[data-theme="cyan"]');
+  const cyan = await centre();
+  expect(cyan.b).toBeGreaterThan(cyan.r);
+  expect(cyan.g).toBeGreaterThan(cyan.r);
 });
 
 test('the ES module skeleton loads without errors', async ({ page }) => {

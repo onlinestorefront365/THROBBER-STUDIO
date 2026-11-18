@@ -2,9 +2,19 @@
 
 A browser-based studio for designing a 3D crystal-ball loading indicator. It renders a glass orb, a pulsing core, orbital rings with rigid-body physics, and a magnetised particle field in WebGL, and lets you tune all of it live from a side panel. Designs are saved in the browser and can be exported as a single offline HTML file.
 
-The app has no build step and nothing to install. It is static HTML, CSS, and JavaScript with libraries loaded from CDNs. Node is needed only to run the tests.
+The app has no build step to run it. It is static HTML, CSS, and JavaScript with libraries loaded from CDNs. Node is needed only to run the tests and to regenerate the single-file build.
 
-## Quick start
+## Using it now
+
+It is tested in Chromium, the engine behind Chrome and Edge, both locally and in CI. Firefox, Safari, and mobile browsers are untested. It needs a connection to load its libraries from CDNs, and a browser with WebGL.
+
+**Fastest: open one file.** `dist/throbber-studio.html` is the whole studio in a single file.
+
+1. Download it from the repository: open the file on GitHub, then use the download button (the raw file is shown as text, not run).
+2. Double-click it. It opens in your browser from disk, with no server.
+3. Design the throbber, then use the Export tab. Everything works from this file, including **Download HTML**.
+
+**From a clone.**
 
 ```bash
 git clone https://github.com/onlinestorefront365/throbber-studio.git
@@ -12,9 +22,11 @@ cd throbber-studio
 python3 -m http.server 8000
 ```
 
-Open <http://localhost:8000>. Any static file server works. Opening `index.html` directly from disk also works, except for the standalone HTML export, which needs a server.
+Open <http://localhost:8000>. Any static file server works. Opening `index.html` directly also works; only **Download HTML** needs a server there, and the studio says so if you try it.
 
-An internet connection is required on first load, because Tailwind, Three.js, Tone.js, Lucide, and the fonts come from CDNs.
+**Get a loader out of it.** Export tab, **Download HTML**, then embed the file where you need the loader (see [Standalone export](#standalone-export)).
+
+Your design is saved in your browser, per browser and per file location, so a design made in the single file and one made on `localhost` are separate.
 
 ## What you can do
 
@@ -64,12 +76,14 @@ Every change in the panel is saved to the browser's `localStorage` automatically
 
 The exported page runs the same scene and physics code as the studio, with the same settings. Ring and particle motion is simulated live, so it is not frame-identical to what was on screen at export time. The page has a dark background (`#05060a`), which you can change in its `<style>` block.
 
-The export reads the studio's own script files, which browsers only allow over `http` or `https`. If the studio was opened from disk, the button reports that it needs a web server.
+The export needs the source of the studio's drawing scripts. `dist/throbber-studio.html` carries them inside the page, so it can always export. `index.html` has to fetch them, which browsers only allow over `http` or `https`; opened from disk, its button reports that and points to the single file.
 
 ## Project structure
 
 ```
 index.html              Markup and CDN includes
+dist/throbber-studio.html  Single-file build of the studio (generated, committed)
+scripts/build.js        Generates the single file: inlines css/ and js/ into index.html
 css/styles.css          Scrollbar and glass-panel styles (everything else is Tailwind utilities)
 js/tailwind.config.js   Tailwind CDN theme: fonts and brand colours
 
@@ -120,6 +134,16 @@ Two things change in a real migration. The app would no longer open from `file:/
 
 These are stylised models chosen to look good, not a physically accurate simulation.
 
+## Single-file build
+
+```bash
+npm run build
+```
+
+writes `dist/throbber-studio.html` by inlining `css/styles.css` and every script in `js/` into `index.html`. It uses only Node's standard library. The CDN libraries stay as links, so the file still needs a connection when opened.
+
+The generated file is committed so it can be downloaded without Node. A test fails if it is out of date with the sources, so run `npm run build` and commit the result after any change to `index.html`, `css/`, or `js/`.
+
 ## Testing
 
 ```bash
@@ -128,7 +152,7 @@ npx playwright install chromium
 npm test
 ```
 
-The tests drive the studio in headless Chromium. They cover loading, the panel controls, saving and restoring a design, rejection of invalid saved data, reset, and the standalone export played with the network blocked.
+The tests drive the studio in headless Chromium. They cover loading, the panel controls, saving and restoring a design, rejection of invalid saved data, reset, the standalone export played with the network blocked, the single-file build opened from disk, and that the committed build is current.
 
 The same tests run in GitHub Actions on every pull request and on every push to `main`.
 
@@ -148,13 +172,12 @@ Development only: [@playwright/test](https://playwright.dev) 1.63.0, installed t
 
 ## Browser support
 
-Any current desktop or mobile browser with WebGL. Audio starts only after a click on the audio button, as browsers require a user gesture.
+Tested in Chromium (Chrome and Edge). Firefox, Safari, and mobile browsers should work, since the code uses standard WebGL and DOM APIs, but they have not been tried. Audio starts only after a click on the audio button, as browsers require a user gesture.
 
 ## Known issues
 
+- **It is not usable offline.** The studio and the single-file build load Tailwind, Three.js, Tone.js, Lucide, and fonts from CDNs. Only an exported page is self-contained.
 - **Two dependencies are unpinned.** Lucide loads `@latest` and Tailwind loads the Play CDN build, so an upstream release can change or break the page, and can fail the tests without any change in this repo. The Play CDN is also not intended for production use.
-- **The floor shadow is always purple.** Its texture does not follow the selected colour theme.
-- **Drift phases change when rings are rebuilt.** After randomising axis drift, changing the ring count, reloading, or exporting gives each ring a different drift phase for the same seed. Drift rates are preserved.
 - **Copy uses `document.execCommand('copy')`,** which is deprecated.
 
 ## Contributing

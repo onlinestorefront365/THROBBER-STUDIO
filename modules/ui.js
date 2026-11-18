@@ -1,5 +1,5 @@
-import { config, createMulberry32, getActiveColors } from './state.js';
-import { ringMeshes, rebuildRings } from './rings.js';
+import { config, getActiveColors } from './state.js';
+import { ringMeshes, rebuildRings, driftFromSeed } from './rings.js';
 import { rebuildParticles } from './particles.js';
 import { applySceneColors, applySceneSettings, applyConfigToScene } from './apply.js';
 import { resetState } from './persist.js';

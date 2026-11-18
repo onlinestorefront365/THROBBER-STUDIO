@@ -15,6 +15,9 @@ function applySceneColors() {
   prismMat.emissive.setHex(c.glow);
   coreAuraMat.color.setHex(c.glow);
 
+  shadowMat.map.dispose();
+  shadowMat.map = createShadowTexture(`#${new THREE.Color(c.glow).getHexString()}`);
+
   ringMeshes.forEach(ring => {
     ring.material.color.setHex(c.ring);
     ring.material.emissive.setHex(c.glow);
