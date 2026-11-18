@@ -1,0 +1,13 @@
+{
+  "name": "throbber-studio",
+  "private": true,
+  "description": "Browser-based studio for designing a 3D crystal-ball loading indicator",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "build": "node scripts/build.js",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

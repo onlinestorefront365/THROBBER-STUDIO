@@ -101,13 +101,15 @@ const coreAura = new THREE.Mesh(coreAuraGeo, coreAuraMat);
 coreGroup.add(coreAura);
 
 // 3. Floor Shadow Disc
-function createShadowTexture() {
+function createShadowTexture(glowHex = '#a855f7') {
+  const glow = new THREE.Color(glowHex);
+  const [r, g, b] = [glow.r, glow.g, glow.b].map(v => Math.round(v * 255));
   const canvas = document.createElement('canvas');
   canvas.width = 128;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
   const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 60);
-  grad.addColorStop(0, 'rgba(168, 85, 247, 0.55)');
+  grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.55)`);
   grad.addColorStop(0.5, 'rgba(15, 10, 30, 0.35)');
   grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = grad;
@@ -126,3 +128,14 @@ const floorShadow = new THREE.Mesh(shadowGeo, shadowMat);
 floorShadow.rotation.x = -Math.PI / 2;
 floorShadow.position.y = -1.65;
 scene.add(floorShadow);
+
+// Responsive Resize
+function handleResize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  if (w === 0 || h === 0) return;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', handleResize);

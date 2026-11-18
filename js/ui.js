@@ -1,77 +1,143 @@
 lucide.createIcons();
 
-// Apply Visual Theme & Preset
-const SINGULARITY_CORE_COLOR = 0x05050a;
+// Global sliders: each row drives its listener, its value label, and syncGlobalSliders.
+// `id` is the shared suffix of the `input-*` and `val-*` elements in index.html.
+const GLOBAL_SLIDERS = [
+  { id: 'ring-count',     key: 'ringCount',        format: v => String(v),          apply: refreshRings },
+  { id: 'zoom',           key: 'cameraZoom',       format: v => v.toFixed(1),       apply: applySceneSettings },
+  { id: 'speed',          key: 'speed',            format: v => `${v.toFixed(1)}x`, apply: updateExportSnippet },
+  { id: 'rot-speed',      key: 'rotationSpeed',    format: v => `${v.toFixed(1)}x` },
+  { id: 'opacity',        key: 'glassOpacity',     format: v => v.toFixed(2),       apply: applySceneSettings },
+  { id: 'particles',      key: 'particleCount',    format: v => String(v),          apply: rebuildParticles },
+  { id: 'ring-magnet',    key: 'ringMagnetism',    format: v => v.toFixed(2) },
+  { id: 'sparkle-magnet', key: 'sparkleMagnetism', format: v => v.toFixed(2) }
+];
 
-function applyCoreColor() {
-  plasmaMat.color.setHex(config.preset === 'singularity' ? SINGULARITY_CORE_COLOR : getActiveColors().core);
-}
+const TOGGLES = [
+  { id: 'toggle-orb', key: 'showOrb' },
+  { id: 'toggle-core', key: 'showCore' },
+  { id: 'toggle-shadow', key: 'showShadow' },
+  { id: 'toggle-drift-modulation', key: 'driftOrganicWalk' }
+];
 
-function applyThemeColors() {
-  const c = getActiveColors();
-  document.getElementById('bg-aura').style.backgroundColor = c.hex;
-
-  corePointLight.color.setHex(c.glow);
-  fresnelMat.color.setHex(c.ring);
-  applyCoreColor();
-  plasmaMat.emissive.setHex(c.glow);
-  prismMat.emissive.setHex(c.glow);
-  coreAuraMat.color.setHex(c.glow);
-
-  ringMeshes.forEach(ring => {
-    ring.material.color.setHex(c.ring);
-    ring.material.emissive.setHex(c.glow);
+// Sync Panel Controls from Config
+function syncGlobalSliders() {
+  GLOBAL_SLIDERS.forEach(({ id, key, format }) => {
+    document.getElementById(`input-${id}`).value = config[key];
+    document.getElementById(`val-${id}`).textContent = format(config[key]);
   });
-
-  rebuildParticles();
-  updateExportSnippet();
 }
 
-function applyPreset(presetName) {
-  config.preset = presetName;
+function syncPresetCards() {
   document.querySelectorAll('.preset-card').forEach(btn => {
-    const active = btn.dataset.preset === presetName;
+    const active = btn.dataset.preset === config.preset;
     btn.classList.toggle('active', active);
     btn.classList.toggle('border-brand-500/60', active);
     btn.classList.toggle('bg-brand-500/15', active);
     btn.classList.toggle('border-white/10', !active);
     btn.classList.toggle('bg-white/5', !active);
   });
+}
 
-  plasmaCore.visible = false;
-  prismCore.visible = false;
+function syncThemeControls() {
+  document.querySelectorAll('.theme-swatch').forEach(swatch => {
+    const active = !config.customColor && swatch.dataset.theme === config.theme;
+    swatch.classList.toggle('border-white', active);
+    swatch.classList.toggle('border-transparent', !active);
+  });
+  document.getElementById('bg-aura').style.backgroundColor = getActiveColors().hex;
+}
+
+function syncControlsFromConfig() {
+  syncPresetCards();
+  syncThemeControls();
+  document.getElementById('custom-color-picker').value = getActiveColors().hex;
+  TOGGLES.forEach(({ id, key }) => {
+    document.getElementById(id).checked = config[key];
+  });
+  syncGlobalSliders();
+  document.getElementById('val-prng-seed').textContent = config.prngSeed;
+  renderRingControlCards();
+  updateExportSnippet();
+}
+
+// Apply Visual Theme & Preset
+function applyThemeColors() {
+  syncThemeControls();
+  applySceneColors();
+  updateExportSnippet();
+}
+
+function applyPreset(presetName) {
+  config.preset = presetName;
 
   if (presetName === 'classic') {
-    plasmaCore.visible = true;
     config.showOrb = true;
     config.glassOpacity = 0.45;
   } else if (presetName === 'gyro') {
-    plasmaCore.visible = true;
     config.showOrb = false;
     config.ringCount = Math.max(config.ringCount, 3);
   } else if (presetName === 'prism') {
-    prismCore.visible = true;
     config.showOrb = true;
     config.glassOpacity = 0.35;
   } else if (presetName === 'singularity') {
-    plasmaCore.visible = true;
     config.showOrb = true;
     config.glassOpacity = 0.55;
   }
 
-  applyCoreColor();
-
-  document.getElementById('toggle-orb').checked = config.showOrb;
-  document.getElementById('input-opacity').value = config.glassOpacity;
-  document.getElementById('val-opacity').textContent = config.glassOpacity.toFixed(2);
-  document.getElementById('input-ring-count').value = config.ringCount;
-  document.getElementById('val-ring-count').textContent = config.ringCount;
-
-  crystalSphere.visible = config.showOrb;
-  fresnelShell.visible = config.showOrb;
-  glassMat.opacity = config.glassOpacity;
-
+  syncControlsFromConfig();
+  applySceneSettings();
   rebuildRings();
+}
+
+function refreshRings() {
+  rebuildRings();
+  renderRingControlCards();
+}
+
+// Pseudo-Randomize Axis Drift for a single ring or all rings
+function pseudoRandomizeRingDrift(idx, seedVal) {
+  const drift = driftFromSeed(seedVal);
+  const newRate = drift.rate;
+  config.ringAxisMigration[idx] = newRate;
+  config.ringDriftSeeds[idx] = seedVal;
+
+  if (ringMeshes[idx]) {
+    ringMeshes[idx].userData.driftPhaseX = drift.phaseX;
+    ringMeshes[idx].userData.driftPhaseY = drift.phaseY;
+    ringMeshes[idx].userData.driftPhaseZ = drift.phaseZ;
+    ringMeshes[idx].userData.driftFreqRatio1 = drift.freqRatio1;
+    ringMeshes[idx].userData.driftFreqRatio2 = drift.freqRatio2;
+  }
+
+  const slider = document.querySelector(`.ring-drift-slider[data-idx="${idx}"]`);
+  const label = document.getElementById(`r-drift-${idx}`);
+  if (slider) slider.value = newRate;
+  if (label) label.textContent = `${newRate.toFixed(2)} rad/s`;
+}
+
+function pseudoRandomizeAllDrifts() {
+  // Advance deterministic PRNG seed
+  config.prngSeed = (Math.imul(config.prngSeed, 1664525) + 1013904223) >>> 0;
+  document.getElementById('val-prng-seed').textContent = config.prngSeed;
+
+  const masterRng = createMulberry32(config.prngSeed);
+  for (let i = 0; i < 6; i++) {
+    const subSeed = Math.floor(masterRng() * 999999) + 1;
+    pseudoRandomizeRingDrift(i, subSeed);
+  }
+  showToast(`Axis drift randomized (Seed ${config.prngSeed})`);
+}
+
+function zeroAllDrifts() {
+  for (let i = 0; i < 6; i++) {
+    config.ringAxisMigration[i] = 0.0;
+    const slider = document.querySelector(`.ring-drift-slider[data-idx="${i}"]`);
+    const label = document.getElementById(`r-drift-${i}`);
+    if (slider) slider.value = 0;
+    if (label) label.textContent = '0.00 rad/s';
+  }
+  showToast('Axis drift reset to 0.00 rad/s');
 }
 
 // Dynamic Per-Ring UI Cards
@@ -239,7 +305,7 @@ function renderRingControlCards() {
   });
 }
 
-// Export Code Generator
+// CSS Snippet Generator
 function updateExportSnippet() {
   const c = getActiveColors();
   const duration = (2.0 / Math.max(0.2, config.speed)).toFixed(2);
@@ -306,94 +372,44 @@ document.querySelectorAll('.theme-swatch').forEach(swatch => {
   swatch.addEventListener('click', () => {
     config.customColor = null;
     config.theme = swatch.dataset.theme;
-    document.querySelectorAll('.theme-swatch').forEach(s => {
-      s.classList.toggle('border-white', s === swatch);
-      s.classList.toggle('border-transparent', s !== swatch);
-    });
     applyThemeColors();
   });
 });
 
 document.getElementById('custom-color-picker').addEventListener('input', e => {
   config.customColor = e.target.value;
-  document.querySelectorAll('.theme-swatch').forEach(s => {
-    s.classList.remove('border-white');
-    s.classList.add('border-transparent');
-  });
   applyThemeColors();
 });
 
-// Component Visibility Toggles
-document.getElementById('toggle-orb').addEventListener('change', e => {
-  config.showOrb = e.target.checked;
-  crystalSphere.visible = config.showOrb;
-  fresnelShell.visible = config.showOrb;
+// Toggles & Global Sliders
+TOGGLES.forEach(({ id, key }) => {
+  document.getElementById(id).addEventListener('change', e => {
+    config[key] = e.target.checked;
+    applySceneSettings();
+  });
 });
 
-document.getElementById('toggle-core').addEventListener('change', e => {
-  config.showCore = e.target.checked;
-  coreGroup.visible = config.showCore;
-});
-
-document.getElementById('toggle-shadow').addEventListener('change', e => {
-  config.showShadow = e.target.checked;
-  floorShadow.visible = config.showShadow;
+GLOBAL_SLIDERS.forEach(({ id, key, apply }) => {
+  document.getElementById(`input-${id}`).addEventListener('input', e => {
+    config[key] = Number(e.target.value);
+    syncGlobalSliders();
+    if (apply) apply();
+  });
 });
 
 // PRNG Drift Controls
 document.getElementById('btn-randomize-drift').addEventListener('click', pseudoRandomizeAllDrifts);
 document.getElementById('btn-zero-drift').addEventListener('click', zeroAllDrifts);
-document.getElementById('toggle-drift-modulation').addEventListener('change', e => {
-  config.driftOrganicWalk = e.target.checked;
+
+// Reset Saved Design
+document.getElementById('reset-design-btn').addEventListener('click', () => {
+  resetState();
+  syncControlsFromConfig();
+  applyConfigToScene();
+  showToast('Design reset to defaults');
 });
 
-// Global Sliders
-document.getElementById('input-zoom').addEventListener('input', e => {
-  config.cameraZoom = parseFloat(e.target.value);
-  document.getElementById('val-zoom').textContent = config.cameraZoom.toFixed(1);
-  camera.position.z = config.cameraZoom;
-});
-
-document.getElementById('input-ring-count').addEventListener('input', e => {
-  config.ringCount = parseInt(e.target.value, 10);
-  document.getElementById('val-ring-count').textContent = config.ringCount;
-  rebuildRings();
-});
-
-document.getElementById('input-speed').addEventListener('input', e => {
-  config.speed = parseFloat(e.target.value);
-  document.getElementById('val-speed').textContent = `${config.speed.toFixed(1)}x`;
-  updateExportSnippet();
-});
-
-document.getElementById('input-rot-speed').addEventListener('input', e => {
-  config.rotationSpeed = parseFloat(e.target.value);
-  document.getElementById('val-rot-speed').textContent = `${config.rotationSpeed.toFixed(1)}x`;
-});
-
-document.getElementById('input-opacity').addEventListener('input', e => {
-  config.glassOpacity = parseFloat(e.target.value);
-  document.getElementById('val-opacity').textContent = config.glassOpacity.toFixed(2);
-  glassMat.opacity = config.glassOpacity;
-});
-
-document.getElementById('input-particles').addEventListener('input', e => {
-  config.particleCount = parseInt(e.target.value, 10);
-  document.getElementById('val-particles').textContent = config.particleCount;
-  rebuildParticles();
-});
-
-document.getElementById('input-ring-magnet').addEventListener('input', e => {
-  config.ringMagnetism = parseFloat(e.target.value);
-  document.getElementById('val-ring-magnet').textContent = config.ringMagnetism.toFixed(2);
-});
-
-document.getElementById('input-sparkle-magnet').addEventListener('input', e => {
-  config.sparkleMagnetism = parseFloat(e.target.value);
-  document.getElementById('val-sparkle-magnet').textContent = config.sparkleMagnetism.toFixed(2);
-});
-
-// Copy Export Code
+// Copy CSS Snippet
 document.getElementById('export-css-btn').addEventListener('click', () => {
   const code = document.getElementById('code-output').textContent;
   const ta = document.createElement('textarea');

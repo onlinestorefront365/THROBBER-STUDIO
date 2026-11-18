@@ -1,10 +1,10 @@
 // Toolbar Actions
 document.getElementById('reset-camera-btn').addEventListener('click', () => {
   throbberGroup.rotation.set(0, 0, 0);
-  config.cameraZoom = 8.2;
-  document.getElementById('input-zoom').value = 8.2;
-  document.getElementById('val-zoom').textContent = '8.2';
+  config.cameraZoom = DEFAULT_STATE.cameraZoom;
   camera.position.set(0, 0.45, config.cameraZoom);
+  syncGlobalSliders();
+  saveState();
   showToast('Camera reset');
 });
 
@@ -40,17 +40,6 @@ container.addEventListener('wheel', e => {
   e.preventDefault();
   config.cameraZoom = Math.min(15.0, Math.max(4.5, config.cameraZoom + e.deltaY * 0.005));
   camera.position.z = config.cameraZoom;
-  document.getElementById('input-zoom').value = config.cameraZoom.toFixed(1);
-  document.getElementById('val-zoom').textContent = config.cameraZoom.toFixed(1);
+  syncGlobalSliders();
+  saveState();
 }, { passive: false });
-
-// Responsive Resize
-function handleResize() {
-  const w = container.clientWidth;
-  const h = container.clientHeight;
-  if (w === 0 || h === 0) return;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
-}
-window.addEventListener('resize', handleResize);
